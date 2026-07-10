@@ -69,8 +69,12 @@ def _quant_scatter_kernel(
 
     loc = tl.load(loc_ptr + token_id)
     if loc >= 0:
-        loc_page = loc // PAGE_SIZE_C
-        loc_off = loc % PAGE_SIZE_C
+        # Byte offsets below multiply the page ordinal by the page byte size;
+        # keep that arithmetic 64-bit — an int32 slot id is fine in the token
+        # domain, but its byte products overflow past a 2 GiB pool.
+        loc64 = loc.to(tl.int64)
+        loc_page = loc64 // PAGE_SIZE_C
+        loc_off = loc64 % PAGE_SIZE_C
 
         if tile_id == NUM_TILES:
             # bf16 rope half: bytes [DIM_NOPE, DATA_ROW_BYTES) of the token row.
