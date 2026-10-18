@@ -31,9 +31,7 @@ HIDDEN_SIZE = 7168
 
 def _has_supported_gpu() -> bool:
     # Defer to the predicate the runtime actually dispatches on rather than
-    # restating its capability set. It accepts SM100/SM103 only; SM107 takes
-    # the FLA fallback in KDAKernelDispatch, so admitting it here would run
-    # these parity assertions against the unoptimized path.
+    # restating its capability set (SM100/SM103/SM107).
     if not torch.cuda.is_available():
         return False
     return is_kda_optimized_supported()
@@ -41,7 +39,7 @@ def _has_supported_gpu() -> bool:
 
 pytestmark = pytest.mark.skipif(
     not _has_supported_gpu(),
-    reason="KDA optimized decode kernels require Blackwell SM100/SM103",
+    reason="KDA optimized decode kernels require SM100/SM103/SM107",
 )
 
 
@@ -344,8 +342,15 @@ def test_optimized_decode_updates_indexed_recurrent_state_pool_in_place(
     )
     initial_cache = _make_cache(batch_size)
 
+    # Same optimized path as the pooled calls below, so that only the pool
+    # addressing differs; the fallback path rounds differently.
+    dense_indices = torch.arange(batch_size, dtype=torch.int32, device="cuda")
     local_output, local_cache = _run_production_decode(
-        optimized, hidden_states, copy.deepcopy(initial_cache)
+        optimized,
+        hidden_states,
+        copy.deepcopy(initial_cache),
+        slot_indices=dense_indices.long(),
+        ssm_state_indices=dense_indices,
     )
 
     slots = batch_size + 3

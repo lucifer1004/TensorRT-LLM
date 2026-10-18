@@ -36,9 +36,7 @@ HIDDEN_SIZE = 7168
 
 def _has_supported_gpu() -> bool:
     # Defer to the predicate the runtime actually dispatches on rather than
-    # restating its capability set. It accepts SM100/SM103 only; SM107 takes
-    # the FLA fallback in KDAKernelDispatch, so admitting it here would run
-    # these parity assertions against the unoptimized path.
+    # restating its capability set (SM100/SM103/SM107).
     if not torch.cuda.is_available():
         return False
     return is_kda_optimized_supported()
@@ -46,7 +44,7 @@ def _has_supported_gpu() -> bool:
 
 pytestmark = pytest.mark.skipif(
     not _has_supported_gpu(),
-    reason="KDA optimized prefill kernels require Blackwell SM100/SM103",
+    reason="KDA optimized prefill kernels require SM100/SM103/SM107",
 )
 
 
